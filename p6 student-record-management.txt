@@ -28,9 +28,11 @@ student-record-management
     +--- StudentController.js
     +--- app.js
 
-Inside BE, write in terminal: npm init -y
+now in terminal : enter :  cd BE then write in terminal: npm init -y
 npm install express mongoose body-parser cors nodemon
 
+//at last
+// run the server:- node server.js (make sure before running that the path of your back-end is located )
 
 // db.js code :
 
