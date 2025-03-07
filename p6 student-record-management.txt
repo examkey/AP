@@ -1,0 +1,334 @@
+student-record-management
+|
++--- BE (folder)
+|   |
+|   +--- src (folder)
+|       |
+|       +--- routes (folder)
+|       |   |
+|       |   +--- StudentRouter.js
+|       |
+|       +--- config (folder)
+|       |   |
+|       |   +--- db.js
+|       |
+|       +--- models (folder)
+|       |   |
+|       |   +--- student.js 
+|       |
+|       +--- server.js 
+|   
+|   
+|   
+|
++--- public (folder)
+    |
+    +--- index.html
+    +--- style.css
+    +--- StudentController.js
+    +--- app.js
+
+Inside BE, write in terminal: npm init -y
+npm install express mongoose body-parser cors nodemon
+
+
+// db.js code :
+
+const mongoose = require('mongoose');
+
+mongoose.connect('mongodb://127.0.0.1:27017/studentRecords')
+    .then(() => {
+        console.log('MongoDB connected');
+    })
+    .catch((err) => {
+        console.error('MongoDB connection error:', err);
+    });
+
+//student.js code :
+
+const mongoose = require('mongoose');
+
+const studentSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true,
+    },
+    email: {
+        type: String,
+        required: true,
+        unique: true,
+    },
+    phone: {
+        type: String,
+        required: true,
+    },
+});
+
+const Student = mongoose.model('Student', studentSchema);
+
+module.exports = Student;
+
+//StudentRoutes.js code :
+
+const express = require('express');
+const Student = require('../models/student');
+const router = express.Router();
+
+router.post('/students', async (req, res) => {
+    try {
+        const { name, email, phone } = req.body;
+        const student = new Student({ name, email, phone });
+        await student.save();
+        res.status(201).json(student);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+router.get('/students', async (req, res) => {
+    try {
+        const students = await Student.find();
+        res.status(200).json(students);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.get('/students/:id', async (req, res) => {
+    try {
+        const student = await Student.findById(req.params.id);
+        if (!student) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+        res.status(200).json(student);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.put('/students/:id', async (req, res) => {
+    try {
+        const { name, email, phone } = req.body;
+        const student = await Student.findByIdAndUpdate(
+            req.params.id,
+            { name, email, phone },
+            { new: true }
+        );
+        if (!student) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+        res.status(200).json(student);
+    } catch (error) {
+        res.status(400).json({ error: error.message });
+    }
+});
+
+router.delete('/students/:id', async (req, res) => {
+    try {
+        const student = await Student.findByIdAndDelete(req.params.id);
+        if (!student) {
+            return res.status(404).json({ error: 'Student not found' });
+        }
+        res.status(200).json({ message: 'Student deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+module.exports = router;
+
+// server.js code :
+
+const express = require('express');
+const bodyParser = require('body-parser');
+const cors = require('cors');
+const studentRoutes = require('./routes/studentRoutes');
+const db = require('./config/db');
+
+const app = express();
+
+app.use(cors());
+app.use(bodyParser.json());
+
+app.use('/api', studentRoutes);
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Server is running on port ${PORT}`);
+});
+
+//app.js code :
+
+var app = angular.module('studentApp', []);
+
+//index.js code :
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Records</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body ng-app="studentApp">
+    <div ng-controller="StudentController" class="container">
+        <h1>Student Records</h1>
+
+        <form ng-submit="addOrUpdateStudent()">
+            <input type="hidden" ng-model="student.id">
+            <input type="text" ng-model="student.name" placeholder="Name" required>
+            <input type="email" ng-model="student.email" placeholder="Email" required>
+            <input type="text" ng-model="student.phone" placeholder="Phone" required>
+            <button type="submit">{{student._id ? 'Update' : 'Add'}} Student</button>
+        </form>
+
+        <h2>Student List</h2>
+        <ul>
+            <li ng-repeat="student in students">
+                <strong>{{student.name}}</strong><br>
+                Email: {{student.email}}<br>
+                Phone: {{student.phone}}<br>
+                <button ng-click="editStudent(student)">Edit</button>
+                <button ng-click="deleteStudent(student._id)">Delete</button>
+            </li>
+        </ul>
+
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.8.2/angular.min.js"></script>
+    <script src="app.js"></script>
+    <script src="StudentController.js"></script>
+</body>
+
+</html>
+
+//StudentController.js code:
+
+app.controller('StudentController', ['$scope', '$http', function ($scope, $http) {
+    const apiUrl = 'http://localhost:3000/api/students';
+
+    $scope.student = {};
+
+    $scope.students = [];
+
+    function getAllStudents() {
+        $http.get(apiUrl)
+            .then(function (response) {
+                $scope.students = response.data;
+            })
+            .catch(function (error) {
+                console.error("Error fetching students: ", error);
+            });
+    }
+
+    getAllStudents();
+
+    $scope.addOrUpdateStudent = function () {
+        if ($scope.student._id) {
+            $http.put(apiUrl + '/' + $scope.student._id, $scope.student)
+                .then(function (response) {
+                    getAllStudents();
+                    $scope.student = {};
+                })
+                .catch(function (error) {
+                    console.error("Error updating student: ", error);
+                });
+        } else {
+            $http.post(apiUrl, $scope.student)
+                .then(function (response) {
+                    getAllStudents();
+                    $scope.student = {};
+                })
+                .catch(function (error) {
+                    console.error("Error adding student: ", error);
+                });
+        }
+    };
+
+    $scope.editStudent = function (student) {
+        $scope.student = angular.copy(student);
+    };
+
+    $scope.deleteStudent = function (studentId) {
+        $http.delete(apiUrl + '/' + studentId)
+            .then(function (response) {
+                getAllStudents();
+            })
+            .catch(function (error) {
+                console.error("Error deleting student: ", error);
+            });
+    };
+}]);
+
+
+// style.css code :
+
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f4f4f4;
+    padding: 20px;
+}
+
+.container {
+    width: 50%;
+    margin: 0 auto;
+    padding: 20px;
+    background-color: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h1 {
+    text-align: center;
+}
+
+form input {
+    width: 100%;
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+form button {
+    width: 100%;
+    padding: 10px;
+    margin: 10px 0;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 5px;
+}
+
+form button:hover {
+    background-color: #45a049;
+}
+
+ul {
+    list-style-type: none;
+    padding: 0;
+}
+
+ul li {
+    background-color: #f9f9f9;
+    padding: 10px;
+    margin: 10px 0;
+    border-radius: 5px;
+}
+
+ul li button {
+    background-color: #f44336;
+    color: white;
+    border: none;
+    padding: 5px;
+    margin-left: 10px;
+    cursor: pointer;
+}
+
+ul li button:hover {
+    background-color: #e53935;
+}
+
+
